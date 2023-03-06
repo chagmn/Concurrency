@@ -29,6 +29,7 @@ final class ImageDownloadCell: UITableViewCell {
         let button = UIButton(frame: .zero)
         button.backgroundColor = .systemBlue
         button.setTitle("Load", for: .normal)
+        button.setTitle("Cancel", for: .selected)
         button.setTitleColor(.white, for: .normal)
         button.layer.cornerRadius = 8
         button.addTarget(self, action: #selector(clickLoadButton), for: .touchUpInside)
@@ -81,17 +82,19 @@ extension ImageDownloadCell {
         ])
     }
     
+    private func resetView() {
+        photoView.image = .init(systemName: "photo")
+        progressView.progress = 0.0
+        loadButton.isSelected = false
+    }
+    
     @objc private func clickLoadButton(_ sender: UIButton) {
-        repository.fetchImage { result in
-            switch result {
-            case .success(let image):
-                DispatchQueue.main.async {
-                    self.photoView.image = image
-                }
-                
-            case .failure(let error):
-                print(error.localizedDescription)
-            }
+        sender.isSelected.toggle()
+        
+        guard sender.isSelected else {
+            repository.task?.cancel()
+            resetView()
+            return
         }
         
         downloadImage()
@@ -100,11 +103,21 @@ extension ImageDownloadCell {
 // MARK: - Functions
 extension ImageDownloadCell {
     func downloadImage() {
+        if !loadButton.isSelected { loadButton.isSelected.toggle() }
+        
         repository.fetchImage { result in
             switch result {
             case .success(let image):
+                guard let image = image else {
+                    DispatchQueue.main.async {
+                        self.resetView()
+                    }
+                    return
+                }
+                
                 DispatchQueue.main.async {
                     self.photoView.image = image
+                    self.loadButton.isSelected = false
                 }
                 
             case .failure(let error):
