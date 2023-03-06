@@ -12,6 +12,7 @@ final class ImageDownloadCell: UITableViewCell {
     static let identifier = String(describing: ImageDownloadCell.self)
     static let height = CGFloat(120)
     private let repository = ImageRepository()
+    private var observation: NSKeyValueObservation!
     
     // MARK: UI Components
     private lazy var photoView: UIImageView = {
@@ -21,7 +22,6 @@ final class ImageDownloadCell: UITableViewCell {
     private lazy var progressView: UIProgressView = {
         let view = UIProgressView(progressViewStyle: .default)
         view.trackTintColor = .lightGray
-        view.progress = 0.5
         return view
     }()
     
@@ -40,6 +40,11 @@ final class ImageDownloadCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         
         setupViewLayout()
+    }
+    
+    deinit {
+        observation.invalidate()
+        observation = nil
     }
     
     required init?(coder: NSCoder) { fatalError() }
@@ -72,7 +77,7 @@ extension ImageDownloadCell {
             loadButton.centerYAnchor.constraint(equalTo: photoView.centerYAnchor),
             loadButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
             loadButton.heightAnchor.constraint(equalToConstant: 36),
-            loadButton.widthAnchor.constraint(equalToConstant: 56)
+            loadButton.widthAnchor.constraint(equalToConstant: 64)
         ])
     }
     
@@ -88,6 +93,8 @@ extension ImageDownloadCell {
                 print(error.localizedDescription)
             }
         }
+        
+        downloadImage()
     }
 }
 // MARK: - Functions
@@ -104,5 +111,14 @@ extension ImageDownloadCell {
                 print(error.localizedDescription)
             }
         }
+        
+        observation = repository.task?.progress.observe(
+            \.fractionCompleted,
+             options: .new,
+             changeHandler: { task, change in
+                 DispatchQueue.main.async {
+                     self.progressView.progress = Float(task.fractionCompleted)
+                 }
+        })
     }
 }

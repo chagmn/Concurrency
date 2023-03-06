@@ -63,11 +63,11 @@
 				7684397E29B021F5009155C6 /* AppDelegate.swift */,
 				7684398029B021F5009155C6 /* SceneDelegate.swift */,
 				7684398229B021F5009155C6 /* ViewController.swift */,
+				7684399529B0CCAD009155C6 /* ImageDownloadCell.swift */,
 				7684398A29B021F6009155C6 /* Assets.xcassets */,
 				7684398C29B021F6009155C6 /* LaunchScreen.storyboard */,
 				7684398F29B021F6009155C6 /* Info.plist */,
 				7684398729B021F5009155C6 /* Concurrency.xcdatamodeld */,
-				7684399529B0CCAD009155C6 /* ImageDownloadCell.swift */,
 				7684399729B0DF8E009155C6 /* ImageRepository.swift */,
 			);
 			path = Concurrency;
