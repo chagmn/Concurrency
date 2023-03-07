@@ -13,6 +13,7 @@ final class ImageDownloadCell: UITableViewCell {
     static let height = CGFloat(120)
     private let repository = ImageRepository()
     private var observation: NSKeyValueObservation!
+    private var workItem: DispatchWorkItem!
     
     // MARK: UI Components
     private lazy var photoView: UIImageView = {
@@ -83,16 +84,18 @@ extension ImageDownloadCell {
     }
     
     private func resetView() {
-        photoView.image = .init(systemName: "photo")
-        progressView.progress = 0.0
-        loadButton.isSelected = false
+        DispatchQueue.main.async {
+            self.photoView.image = .init(systemName: "photo")
+            self.progressView.progress = 0.0
+            self.loadButton.isSelected = false
+        }
     }
     
     @objc private func clickLoadButton(_ sender: UIButton) {
         sender.isSelected.toggle()
         
         guard sender.isSelected else {
-            repository.task?.cancel()
+            workItem.cancel()
             resetView()
             return
         }
@@ -105,33 +108,53 @@ extension ImageDownloadCell {
     func downloadImage() {
         if !loadButton.isSelected { loadButton.isSelected.toggle() }
         
-        repository.fetchImage { result in
-            switch result {
-            case .success(let image):
-                guard let image = image else {
-                    DispatchQueue.main.async {
-                        self.resetView()
-                    }
+        workItem = DispatchWorkItem {
+            guard !self.workItem.isCancelled else {
+                self.resetView()
+                return
+            }
+            
+            self.repository.fetchImage { result in
+                guard !self.workItem.isCancelled else {
+                    self.resetView()
                     return
                 }
                 
-                DispatchQueue.main.async {
-                    self.photoView.image = image
-                    self.loadButton.isSelected = false
+                switch result {
+                case .success(let image):
+                    guard let image = image else {
+                        DispatchQueue.main.async {
+                            self.resetView()
+                        }
+                        return
+                    }
+                    
+                    DispatchQueue.main.async {
+                        self.photoView.image = image
+                        self.loadButton.isSelected = false
+                    }
+                    
+                case .failure(let error):
+                    print(error.localizedDescription)
                 }
-                
-            case .failure(let error):
-                print(error.localizedDescription)
             }
+            
+            self.observation = self.repository.task?.progress.observe(
+                \.fractionCompleted,
+                 options: .new,
+                 changeHandler: { task, change in
+                     DispatchQueue.main.async {
+                         guard !self.workItem.isCancelled else {
+                             self.observation.invalidate()
+                             self.observation = nil
+                             self.progressView.progress = 0.0
+                             return
+                         }
+                         self.progressView.progress = Float(task.fractionCompleted)
+                     }
+                 })
         }
         
-        observation = repository.task?.progress.observe(
-            \.fractionCompleted,
-             options: .new,
-             changeHandler: { task, change in
-                 DispatchQueue.main.async {
-                     self.progressView.progress = Float(task.fractionCompleted)
-                 }
-        })
+        DispatchQueue.global().async(execute: workItem)
     }
 }
