@@ -12,8 +12,9 @@ final class ImageDownloadCell: UITableViewCell {
     static let identifier = String(describing: ImageDownloadCell.self)
     static let height = CGFloat(120)
     private let repository = ImageRepository()
-    private var observation: NSKeyValueObservation!
-    private var workItem: DispatchWorkItem!
+//    private var observation: NSKeyValueObservation!
+//    private var workItem: DispatchWorkItem!
+    private var imageLoadTask: Task<Void, Error>!
     
     // MARK: UI Components
     private lazy var photoView: UIImageView = {
@@ -44,10 +45,10 @@ final class ImageDownloadCell: UITableViewCell {
         setupViewLayout()
     }
     
-    deinit {
-        observation.invalidate()
-        observation = nil
-    }
+//    deinit {
+//        observation.invalidate()
+//        observation = nil
+//    }
     
     required init?(coder: NSCoder) { fatalError() }
 }
@@ -95,11 +96,10 @@ extension ImageDownloadCell {
         sender.isSelected.toggle()
         
         guard sender.isSelected else {
-            workItem.cancel()
+            imageLoadTask.cancel()
             resetView()
             return
         }
-        
         downloadImage()
     }
 }
@@ -108,6 +108,21 @@ extension ImageDownloadCell {
     func downloadImage() {
         if !loadButton.isSelected { loadButton.isSelected.toggle() }
         
+        guard let url = URL(string: "https://source.unsplash.com/random") else { return }
+        
+        imageLoadTask =  Task(priority: .userInitiated) {
+            photoView.image = try await repository.fetchImage(url: url)
+            loadButton.isSelected = false
+        }
+        
+//        Task.detached {
+//            let image = try await self.repository.fetchImage(url: url)
+//            await MainActor.run {
+//                self.photoView.image = image
+//            }
+//        }
+                
+        /*
         workItem = DispatchWorkItem {
             guard !self.workItem.isCancelled else {
                 self.resetView()
@@ -156,5 +171,6 @@ extension ImageDownloadCell {
         }
         
         DispatchQueue.global().async(execute: workItem)
+         */
     }
 }
